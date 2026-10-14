@@ -5,6 +5,15 @@ import (
 	"uuid"
 )
 
+type TicketStatus string
+
+const (
+	TicketStatusActive    TicketStatus = "active"
+	TicketStatusUsed      TicketStatus = "used"
+	TicketStatusCancelled TicketStatus = "cancelled"
+	TicketStatusRefunded  TicketStatus = "refunded"
+)
+
 type Ticket struct {
 	TicketID uuid.UUID `json:"ticket_id"`
 	EventID  uuid.UUID `json:"event_id"`

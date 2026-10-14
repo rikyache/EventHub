@@ -5,6 +5,15 @@ import (
 	"uuid"
 )
 
+type EventStatus string
+
+const (
+	EventStatusDraft     EventStatus = "draft"
+	EventStatusPublished EventStatus = "published"
+	EventStatusCanceled  EventStatus = "canceled"
+	EventStatusCompleted EventStatus = "completed"
+)
+
 type Event struct {
 	EventID     uuid.UUID `json:"event_id"`
 	OrganizerID uuid.UUID `json:"organizer_id"`

@@ -5,11 +5,19 @@ import (
 	"uuid"
 )
 
+type UserRole string
+
+const (
+	RoleUser      UserRole = "user"
+	RoleOrganizer UserRole = "organizer"
+	RoleAdmin     UserRole = "admin"
+)
+
 type User struct {
 	UserID       uuid.UUID `json:"user_id"`
 	Username     string    `json:"username"`
 	Name         string    `json:"name"`
-	Role         string    `json:"role"`
+	Role         UserRole  `json:"role"`
 	Balance      float64   `json:"balance"`
 	Email        string    `json:"email"`
 	PasswordHash string    `json:"password_hash"`
