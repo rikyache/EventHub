@@ -6,6 +6,7 @@ import (
 )
 
 type EventStatus string
+type EventType string
 
 const (
 	EventStatusDraft     EventStatus = "draft"
@@ -14,14 +15,24 @@ const (
 	EventStatusCompleted EventStatus = "completed"
 )
 
+const (
+	EventTypeConcert    EventType = "concert"
+	EventTypeTheatre    EventType = "theatre"
+	EventTypeCinema     EventType = "cinema"
+	EventTypeFestival   EventType = "festival"
+	EventTypeConference EventType = "conference"
+	EventTypeSport      EventType = "sport"
+	EventTypeExhibition EventType = "exhibition"
+)
+
 type Event struct {
 	EventID     uuid.UUID `json:"event_id"`
 	OrganizerID uuid.UUID `json:"organizer_id"`
 
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Type        string `json:"type"`
-	Location    string `json:"location"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Type        EventType `json:"type"`
+	Location    string    `json:"location"`
 
 	Capacity int `json:"capacity"`
 	Price    int `json:"price"`

@@ -19,7 +19,7 @@ type Ticket struct {
 	EventID  uuid.UUID `json:"event_id"`
 	UserID   uuid.UUID `json:"user_id"`
 
-	Price  int    `json:"price"`
+	Price  int64  `json:"price"`
 	Status string `json:"status"`
 
 	BoughtAt   time.Time  `json:"bought_at"`

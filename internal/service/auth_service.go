@@ -1,6 +1,15 @@
 package service
 
-import "EventHub/internal/repository"
+import (
+	"EventHub/internal/models"
+	"EventHub/internal/repository"
+	"context"
+	"fmt"
+	"time"
+	"uuid"
+
+	"golang.org/x/crypto/bcrypt"
+)
 
 type AuthService struct {
 	repo *repository.UserRepository
@@ -10,4 +19,41 @@ func NewAuthService(repo *repository.UserRepository) *AuthService {
 	return &AuthService{
 		repo: repo,
 	}
+}
+
+type RegisterInput struct {
+	Username string
+	Name     string
+	Surname  string
+	Email    string
+	Password string
+}
+
+func (s *AuthService) Register(ctx context.Context, input RegisterInput) (uuid.UUID, error) {
+	if len(input.Password) < 8 || len(input.Password) > 72 {
+		return uuid.Nil(), ErrInvalidPassword
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return uuid.Nil(), err
+	}
+
+	user := models.User{
+		UserID:       uuid.New(),
+		Username:     input.Username,
+		Name:         input.Name,
+		Surname:      input.Surname,
+		Email:        input.Email,
+		PasswordHash: string(hash),
+		Role:         models.RoleUser,
+		Balance:      0,
+		CreatedAt:    time.Now().UTC(),
+	}
+
+	if err := s.repo.Create(ctx, &user); err != nil {
+		return uuid.UUID{}, fmt.Errorf("create user: %w", err)
+	}
+
+	return user.UserID, nil
 }

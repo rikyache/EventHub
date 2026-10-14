@@ -8,6 +8,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+      migrate:
+        condition: service_completed_successfully
   postgres:
     image: postgres:17-alpine
     environment:
@@ -29,6 +31,17 @@ services:
 
     ports:
       - "6379:6379"
+  migrate:
+    image: migrate/migrate:v4.19.0
+    volumes:
+      - ./migrations:/migrations:ro
+    command:
+      - "-path=/migrations"
+      - "-database=postgres://postgres_user:postgres_password@postgres:5432/postgres_db?sslmode=disable"
+      - "up"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:
