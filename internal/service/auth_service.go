@@ -1,7 +1,9 @@
 package service
 
 import (
+	"EventHub/internal/auth"
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -13,12 +15,17 @@ import (
 )
 
 type AuthService struct {
-	repo *repository.UserRepository
+	repo   *repository.UserRepository
+	tokens *auth.TokenManager
 }
 
-func NewAuthService(repo *repository.UserRepository) *AuthService {
+func NewAuthService(
+	repo *repository.UserRepository,
+	tokens *auth.TokenManager,
+) *AuthService {
 	return &AuthService{
-		repo: repo,
+		repo:   repo,
+		tokens: tokens,
 	}
 }
 
@@ -60,4 +67,40 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (uuid.U
 	}
 
 	return user.UserID, nil
+}
+
+func (s *AuthService) Login(
+	ctx context.Context,
+	req models.LoginRequest,
+) (string, error) {
+	user, err := s.repo.GetByEmail(ctx, req.Email)
+
+	if errors.Is(err, repository.ErrUserNotFound) {
+		return "", ErrInvalidCredentials
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("get user: %w", err)
+	}
+
+	err = bcrypt.CompareHashAndPassword(
+		[]byte(user.PasswordHash),
+		[]byte(req.Password),
+	)
+
+	if err != nil {
+		return "", ErrInvalidCredentials
+	}
+
+	token, err := s.tokens.Generate(user.UserID)
+	if err != nil {
+		return "", fmt.Errorf("generate access token: %w", err)
+	}
+
+	return token, nil
+}
+
+func (s *AuthService) Logout(ctx context.Context, token string) error {
+
+	return nil
 }

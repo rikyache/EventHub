@@ -1,6 +1,7 @@
 package main
 
 import (
+	"EventHub/internal/auth"
 	"EventHub/internal/database"
 	"EventHub/internal/handlers"
 	"EventHub/internal/logger"
@@ -40,17 +41,25 @@ func main() {
 	}
 	defer pool.Close()
 
+	tokenManager, err := auth.NewTokenManager(os.Getenv("JWT_SECRET"))
+	if err != nil {
+		slog.Error("failed to initialize JWT token manager", "error", err)
+		os.Exit(1)
+	}
+
 	// repo
-	usersRepo := repository.NewUsersRepository(pool)
+	userRepo := repository.NewUsersRepository(pool)
 	// service
-	authService := service.NewAuthService(usersRepo)
+	authService := service.NewAuthService(userRepo, tokenManager)
 	//	handler
 	authHandler := handlers.NewAuthHandler(authService)
 
 	// router
 	mux := http.NewServeMux()
 	// routes
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) { fmt.Fprintln(w, "Healthy") })
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "Healthy")
+	})
 	// USERS
 	mux.HandleFunc("GET /users/me", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("GET /users/tickets", func(w http.ResponseWriter, r *http.Request) {})

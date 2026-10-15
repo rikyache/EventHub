@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -62,4 +63,44 @@ func (r *UserRepository) Create(ctx context.Context, user *models.User) error {
 	}
 
 	return nil
+}
+
+func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*models.User, error) {
+	query := `
+	SELECT
+		user_id,
+		username,
+		name,
+		surname,
+		email,
+		password_hash,
+		role,
+		balance,
+		created_at
+	FROM users
+	WHERE email = $1
+`
+	var user models.User
+
+	err := r.db.QueryRow(ctx, query, email).Scan(
+		&user.UserID,
+		&user.Username,
+		&user.Name,
+		&user.Surname,
+		&user.Email,
+		&user.PasswordHash,
+		&user.Role,
+		&user.Balance,
+		&user.CreatedAt,
+	)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrUserNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }

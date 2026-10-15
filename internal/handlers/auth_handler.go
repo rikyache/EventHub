@@ -69,8 +69,26 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		slog.ErrorContext(ctx, "failed to encode response", "error", err)
 	}
 }
-func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
+func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+	var req models.LoginRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if req.Email == "" || req.Password == "" {
+		http.Error(w, "email or password is required", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+
+	h.Service.Login(ctx, req)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
 }
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
