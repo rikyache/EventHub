@@ -64,8 +64,8 @@ func main() {
 	mux.HandleFunc("POST /events", func(w http.ResponseWriter, r *http.Request) {}) // создание мероприятия
 	mux.HandleFunc("GET /events", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("GET /events/{id}", func(w http.ResponseWriter, r *http.Request) {})
-	mux.HandleFunc("PATCH /events{id}", func(w http.ResponseWriter, r *http.Request) {})
-	mux.HandleFunc("POST /events{id}/publish", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("PATCH /events/{id}", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("POST /events/{id}/publish", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("GET /events/{id}/cancel", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("GET /events/{id}/tickets", func(w http.ResponseWriter, r *http.Request) {})
 	//TICKETS

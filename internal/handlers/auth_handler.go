@@ -8,7 +8,8 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"uuid"
+
+	"github.com/google/uuid"
 )
 
 type AuthHandler struct {

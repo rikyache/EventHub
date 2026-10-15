@@ -26,7 +26,7 @@ func (r *UserRepository) Create(ctx context.Context, user *models.User) error {
 	    user_id, username,name, surname, email, 
 	    password_hash, role, balance, created_at
 	)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, &8, &9)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 `
 
 	_, err := r.db.Exec(

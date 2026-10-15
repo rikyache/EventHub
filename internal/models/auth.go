@@ -4,7 +4,8 @@ import (
 	"errors"
 	"net/mail"
 	"strings"
-	"uuid"
+
+	"github.com/google/uuid"
 )
 
 type RegisterRequest struct {
