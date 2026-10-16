@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"EventHub/internal/middleware"
 	"EventHub/internal/models"
 	"EventHub/internal/service"
 	"encoding/json"
@@ -16,7 +17,7 @@ func NewEventHandler(service *service.EventService) *EventHandler {
 }
 
 func (h *EventHandler) Create(w http.ResponseWriter, r *http.Request) {
-	var req *models.EventCreateRequest
+	var req models.EventCreateRequest
 
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -25,9 +26,18 @@ func (h *EventHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 
-	err = h.service.Create(ctx, req)
+	userID, ok := middleware.UserIDFromContext(ctx)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	err = h.service.Create(ctx, userID, req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
+
+	w.WriteHeader(http.StatusCreated)
 	return
 }
