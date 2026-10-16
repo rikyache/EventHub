@@ -36,3 +36,36 @@ func (m *TokenManager) Generate(userID uuid.UUID) (string, error) {
 
 	return token.SignedString(m.secret)
 }
+
+func (m *TokenManager) Validate(tokenString string) (uuid.UUID, error) {
+	claims := &jwt.RegisteredClaims{}
+
+	token, err := jwt.ParseWithClaims(
+		tokenString,
+		claims,
+		func(tokne *jwt.Token) (interface{}, error) {
+			return m.secret, nil
+		},
+		jwt.WithValidMethods([]string{"HS256"}),
+		jwt.WithIssuer("eventhub"),
+		jwt.WithExpirationRequired(),
+	)
+
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	if !token.Valid {
+		return uuid.Nil, errors.New("invalid token")
+	}
+	userID, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	if userID == uuid.Nil {
+		return uuid.Nil, errors.New("empty user ID")
+	}
+
+	return userID, nil
+}

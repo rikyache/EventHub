@@ -5,6 +5,7 @@ import (
 	"EventHub/internal/database"
 	"EventHub/internal/handlers"
 	"EventHub/internal/logger"
+	"EventHub/internal/middleware"
 	"EventHub/internal/repository"
 	"EventHub/internal/service"
 	"context"
@@ -61,7 +62,7 @@ func main() {
 		fmt.Fprintln(w, "Healthy")
 	})
 	// USERS
-	mux.HandleFunc("GET /users/me", func(w http.ResponseWriter, r *http.Request) {})
+	mux.Handle("GET /users/me", middleware.Auth(tokenManager)(http.HandlerFunc(userHandler.Profile)))
 	mux.HandleFunc("GET /users/tickets", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("POST /users/deposit", func(w http.ResponseWriter, r *http.Request) {})
 	// AUTH

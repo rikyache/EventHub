@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -83,6 +84,46 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*models.
 	var user models.User
 
 	err := r.db.QueryRow(ctx, query, email).Scan(
+		&user.UserID,
+		&user.Username,
+		&user.Name,
+		&user.Surname,
+		&user.Email,
+		&user.PasswordHash,
+		&user.Role,
+		&user.Balance,
+		&user.CreatedAt,
+	)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrUserNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (r *UserRepository) GetByID(ctx context.Context, userID uuid.UUID) (*models.User, error) {
+	query := `
+	SELECT
+		user_id,
+		username,
+		name,
+		surname,
+		email,
+		password_hash,
+		role,
+		balance,
+		created_at
+	FROM users
+	WHERE user_id = $1
+`
+	var user models.User
+
+	err := r.db.QueryRow(ctx, query, userID).Scan(
 		&user.UserID,
 		&user.Username,
 		&user.Name,
