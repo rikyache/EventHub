@@ -22,29 +22,29 @@ func NewEventService(repo *repository.EventRepository) *EventService {
 	}
 }
 
-func (s *EventService) Create(ctx context.Context, userID uuid.UUID, req *models.EventCreateRequest) error {
+func (s *EventService) Create(ctx context.Context, userID uuid.UUID, req *models.EventCreateRequest) (uuid.UUID, error) {
 	if req == nil {
-		return errors.New("event request is nil")
+		return uuid.Nil, errors.New("event request is nil")
 	}
 
 	if strings.TrimSpace(req.Title) == "" {
-		return errors.New("event title cannot be empty")
+		return uuid.Nil, errors.New("event title cannot be empty")
 	}
 
 	if req.Price < 0 {
-		return errors.New("event price cannot be negative")
+		return uuid.Nil, errors.New("event price cannot be negative")
 	}
 
 	if req.Capacity < 1 {
-		return errors.New("event capacity must be greater than zero")
+		return uuid.Nil, errors.New("event capacity must be greater than zero")
 	}
 
 	if !req.StartDate.Before(req.EndDate) {
-		return errors.New("event start date must be before end date")
+		return uuid.Nil, errors.New("event start date must be before end date")
 	}
 
 	if !req.StartDate.After(time.Now()) {
-		return errors.New("event start date must be in the future")
+		return uuid.Nil, errors.New("event start date must be in the future")
 	}
 
 	switch req.Type {
@@ -56,7 +56,7 @@ func (s *EventService) Create(ctx context.Context, userID uuid.UUID, req *models
 		models.EventTypeSport,
 		models.EventTypeExhibition:
 	default:
-		return errors.New("invalid event type")
+		return uuid.Nil, errors.New("invalid event type")
 	}
 
 	event := models.Event{
@@ -78,7 +78,8 @@ func (s *EventService) Create(ctx context.Context, userID uuid.UUID, req *models
 
 	err := s.repo.CreateEvent(ctx, &event)
 	if err != nil {
-		return fmt.Errorf("create event: %w", err)
+		return uuid.Nil, fmt.Errorf("create event: %w", err)
 	}
-	return nil
+
+	return event.EventID, nil
 }

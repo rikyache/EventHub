@@ -6,6 +6,8 @@ import (
 	"EventHub/internal/service"
 	"encoding/json"
 	"net/http"
+
+	"github.com/google/uuid"
 )
 
 type EventHandler struct {
@@ -17,7 +19,7 @@ func NewEventHandler(service *service.EventService) *EventHandler {
 }
 
 func (h *EventHandler) Create(w http.ResponseWriter, r *http.Request) {
-	var req models.EventCreateRequest
+	var req *models.EventCreateRequest
 
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -32,12 +34,16 @@ func (h *EventHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.service.Create(ctx, userID, req)
+	eventID, err := h.service.Create(ctx, userID, req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	return
+
+	json.NewEncoder(w).Encode(map[string]uuid.UUID{
+		"event_id": eventID,
+	})
 }
