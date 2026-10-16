@@ -85,10 +85,20 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	h.Service.Login(ctx, req)
+	token, err := h.Service.Login(ctx, req)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to login", "error", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
+
+	json.NewEncoder(w).Encode(map[string]string{
+		"access_token": token,
+		"token_type":   "Bearer",
+	})
 }
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 

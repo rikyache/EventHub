@@ -52,8 +52,10 @@ func main() {
 	userRepo := repository.NewUsersRepository(pool)
 	// service
 	authService := service.NewAuthService(userRepo, tokenManager)
+	userService := service.NewUserService(userRepo)
 	//	handler
 	authHandler := handlers.NewAuthHandler(authService)
+	userHandler := handlers.NewUserHandler(userService)
 
 	// router
 	mux := http.NewServeMux()
