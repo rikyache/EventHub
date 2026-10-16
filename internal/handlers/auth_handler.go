@@ -13,12 +13,12 @@ import (
 )
 
 type AuthHandler struct {
-	Service *service.AuthService
+	service *service.AuthService
 }
 
 func NewAuthHandler(service *service.AuthService) *AuthHandler {
 	return &AuthHandler{
-		Service: service,
+		service: service,
 	}
 }
 
@@ -45,7 +45,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	userID, err := h.Service.Register(r.Context(), input)
+	userID, err := h.service.Register(r.Context(), input)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidPassword):
@@ -85,7 +85,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	token, err := h.Service.Login(ctx, req)
+	token, err := h.service.Login(ctx, req)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to login", "error", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)

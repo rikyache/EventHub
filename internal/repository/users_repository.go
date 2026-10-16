@@ -145,3 +145,20 @@ func (r *UserRepository) GetByID(ctx context.Context, userID uuid.UUID) (*models
 
 	return &user, nil
 }
+
+func (r *UserRepository) GetRoleByID(ctx context.Context, userID uuid.UUID) (models.UserRole, error) {
+	query := `
+        SELECT role
+        FROM users
+        WHERE user_id = $1
+    `
+
+	var role models.UserRole
+
+	err := r.db.QueryRow(ctx, query, userID).Scan(&role)
+	if err != nil {
+		return "", err
+	}
+
+	return role, nil
+}

@@ -27,3 +27,12 @@ func (s *UserService) GetByID(ctx context.Context, userID uuid.UUID) (*models.Us
 
 	return user, nil
 }
+
+func (s *UserService) GetRoleByID(ctx context.Context, userID uuid.UUID) (models.UserRole, error) {
+	role, err := s.repo.GetRoleByID(ctx, userID)
+	if err != nil {
+		return "", fmt.Errorf("get user role: %w", err)
+	}
+
+	return role, nil
+}

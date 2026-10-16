@@ -42,5 +42,18 @@ type Event struct {
 	EndDate     time.Time `json:"end_date"`
 	CreatedDate time.Time `json:"created_date"`
 
-	Status string `json:"status"`
+	Status EventStatus `json:"status"`
+}
+
+type EventCreateRequest struct {
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Type        EventType `json:"type"`
+	Location    string    `json:"location"`
+
+	Capacity int `json:"capacity"`
+	Price    int `json:"price"`
+
+	StartDate time.Time `json:"start_date"`
+	EndDate   time.Time `json:"end_date"`
 }

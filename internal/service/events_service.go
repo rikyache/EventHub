@@ -1,1 +1,84 @@
 package service
+
+import (
+	"EventHub/internal/models"
+	"EventHub/internal/repository"
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+type EventService struct {
+	repo *repository.EventRepository
+}
+
+func NewEventService(repo *repository.EventRepository) *EventService {
+	return &EventService{
+		repo: repo,
+	}
+}
+
+func (s *EventService) Create(ctx context.Context, userID uuid.UUID, req *models.EventCreateRequest) error {
+	if req == nil {
+		return errors.New("event request is nil")
+	}
+
+	if strings.TrimSpace(req.Title) == "" {
+		return errors.New("event title cannot be empty")
+	}
+
+	if req.Price < 0 {
+		return errors.New("event price cannot be negative")
+	}
+
+	if req.Capacity < 1 {
+		return errors.New("event capacity must be greater than zero")
+	}
+
+	if !req.StartDate.Before(req.EndDate) {
+		return errors.New("event start date must be before end date")
+	}
+
+	if !req.StartDate.After(time.Now()) {
+		return errors.New("event start date must be in the future")
+	}
+
+	switch req.Type {
+	case models.EventTypeConcert,
+		models.EventTypeTheatre,
+		models.EventTypeFestival,
+		models.EventTypeCinema,
+		models.EventTypeConference,
+		models.EventTypeSport,
+		models.EventTypeExhibition:
+	default:
+		return errors.New("invalid event type")
+	}
+
+	event := models.Event{
+		EventID:     uuid.New(),
+		OrganizerID: userID,
+
+		Title:       req.Title,
+		Description: req.Description,
+		Type:        req.Type,
+		Location:    req.Location,
+		Capacity:    req.Capacity,
+		Price:       req.Price,
+
+		StartDate:   req.StartDate,
+		EndDate:     req.EndDate,
+		CreatedDate: time.Now().UTC(),
+		Status:      models.EventStatusDraft,
+	}
+
+	err := s.repo.CreateEvent(ctx, &event)
+	if err != nil {
+		return fmt.Errorf("create event: %w", err)
+	}
+	return nil
+}

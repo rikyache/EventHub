@@ -10,12 +10,12 @@ import (
 )
 
 type UserHandler struct {
-	Service *service.UserService
+	service *service.UserService
 }
 
 func NewUserHandler(service *service.UserService) *UserHandler {
 	return &UserHandler{
-		Service: service,
+		service: service,
 	}
 }
 
@@ -28,7 +28,7 @@ func (h *UserHandler) Profile(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	user, err := h.Service.GetByID(ctx, userID)
+	user, err := h.service.GetByID(ctx, userID)
 	if err != nil {
 		slog.Error("failed to get  user", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)

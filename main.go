@@ -6,6 +6,7 @@ import (
 	"EventHub/internal/handlers"
 	"EventHub/internal/logger"
 	"EventHub/internal/middleware"
+	"EventHub/internal/models"
 	"EventHub/internal/repository"
 	"EventHub/internal/service"
 	"context"
@@ -50,12 +51,15 @@ func main() {
 
 	// repo
 	userRepo := repository.NewUsersRepository(pool)
+	eventRepo := repository.NewEventRepository(pool)
 	// service
 	authService := service.NewAuthService(userRepo, tokenManager)
 	userService := service.NewUserService(userRepo)
+	eventService := service.NewEventService(eventRepo)
 	//	handler
 	authHandler := handlers.NewAuthHandler(authService)
 	userHandler := handlers.NewUserHandler(userService)
+	eventHandler := handlers.NewEventHandler(eventService)
 
 	// router
 	mux := http.NewServeMux()
@@ -73,7 +77,18 @@ func main() {
 	mux.HandleFunc("POST /auth/logout", authHandler.Logout)
 	// mux.HandleFunc("POST /auth/refresh", func(w http.ResponseWriter, r *http.Request) {})
 	// EVENTS
-	mux.HandleFunc("POST /events", func(w http.ResponseWriter, r *http.Request) {}) // создание мероприятия
+	mux.Handle(
+		"POST /events",
+		middleware.Auth(tokenManager)(
+			middleware.RequireRole(
+				userService.GetRoleByID,
+				models.RoleOrganizer,
+				models.RoleAdmin,
+			)(
+				http.HandlerFunc(eventHandler.Create),
+			),
+		),
+	) // создание мероприятия
 	mux.HandleFunc("GET /events", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("GET /events/{id}", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("PATCH /events/{id}", func(w http.ResponseWriter, r *http.Request) {})
