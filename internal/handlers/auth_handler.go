@@ -100,6 +100,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		"token_type":   "Bearer",
 	})
 }
+
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 }

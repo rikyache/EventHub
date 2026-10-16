@@ -3,6 +3,7 @@ package repository
 import (
 	"EventHub/internal/models"
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -52,4 +53,54 @@ func (r *EventRepository) CreateEvent(ctx context.Context, event *models.Event) 
 		event.Status,
 	)
 	return err
+}
+
+func (r *EventRepository) GetEvents(ctx context.Context) ([]*models.Event, error) {
+	query := `
+	SELECT 
+		event_id,
+		organizer_id,
+		title,
+		description,
+		type,
+		location,
+		capacity,
+		price,
+		start_date,
+		end_date,
+		status
+	FROM events
+	`
+	rows, err := r.db.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	events := make([]*models.Event, 0)
+	for rows.Next() {
+		var event models.Event
+		err := rows.Scan(
+			&event.EventID,
+			&event.OrganizerID,
+			&event.Title,
+			&event.Description,
+			&event.Type,
+			&event.Location,
+			&event.Capacity,
+			&event.Price,
+			&event.StartDate,
+			&event.EndDate,
+			&event.Status,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan event: %w", err)
+		}
+
+		events = append(events, &event)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate events: %w", err)
+	}
+
+	return events, nil
 }

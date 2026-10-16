@@ -75,7 +75,7 @@ func main() {
 	mux.HandleFunc("POST /auth/register", authHandler.Register)
 	mux.HandleFunc("POST /auth/login", authHandler.Login)
 	mux.HandleFunc("POST /auth/logout", authHandler.Logout)
-	// mux.HandleFunc("POST /auth/refresh", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("POST /auth/refresh", func(w http.ResponseWriter, r *http.Request) {})
 	// EVENTS
 	mux.Handle(
 		"POST /events",
@@ -89,7 +89,7 @@ func main() {
 			),
 		),
 	) // создание мероприятия
-	mux.HandleFunc("GET /events", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("GET /events", eventHandler.GetEvents)
 	mux.HandleFunc("GET /events/{id}", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("PATCH /events/{id}", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("POST /events/{id}/publish", func(w http.ResponseWriter, r *http.Request) {})

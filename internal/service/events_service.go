@@ -83,3 +83,13 @@ func (s *EventService) Create(ctx context.Context, userID uuid.UUID, req *models
 
 	return event.EventID, nil
 }
+
+func (s *EventService) GetEvents(ctx context.Context) ([]*models.Event, error) {
+	events, err := s.repo.GetEvents(ctx)
+
+	if err != nil {
+		return nil, fmt.Errorf("get events: %w", err)
+	}
+
+	return events, nil
+}

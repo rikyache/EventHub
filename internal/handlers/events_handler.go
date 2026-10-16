@@ -5,6 +5,7 @@ import (
 	"EventHub/internal/models"
 	"EventHub/internal/service"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -46,4 +47,24 @@ func (h *EventHandler) Create(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]uuid.UUID{
 		"event_id": eventID,
 	})
+}
+
+func (h *EventHandler) GetEvents(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	events, err := h.service.GetEvents(ctx)
+	if err != nil {
+		slog.Error("failed to get events", "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(events)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	if err := json.NewEncoder(w).Encode(events); err != nil {
+		slog.Error("failed to encode events", "error", err)
+	}
 }
