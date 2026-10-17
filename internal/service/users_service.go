@@ -36,3 +36,13 @@ func (s *UserService) GetRoleByID(ctx context.Context, userID uuid.UUID) (models
 
 	return role, nil
 }
+
+func (s *UserService) Deposit(ctx context.Context, userID uuid.UUID, amount int64) error {
+
+	err := s.repo.Deposit(ctx, userID, amount)
+	if err != nil {
+		return fmt.Errorf("deposit user: %w", err)
+	}
+
+	return nil
+}

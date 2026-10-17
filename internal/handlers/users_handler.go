@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"EventHub/internal/DTO"
 	"EventHub/internal/middleware"
 	"EventHub/internal/models"
 	"EventHub/internal/service"
@@ -57,4 +58,36 @@ func (h *UserHandler) Profile(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		slog.Error("failed to encode response", "error", err)
 	}
+}
+
+func (h *UserHandler) Deposit(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req dto.DepositRequest
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		slog.Error("failed to decode request", "error", err)
+		return
+	}
+
+	if req.Amount <= 0 {
+		slog.Error("invalid amount", "amount", req.Amount)
+		return
+	}
+
+	ctx := r.Context()
+
+	err = h.service.Deposit(ctx, userID, req.Amount)
+	if err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNoContent)
 }

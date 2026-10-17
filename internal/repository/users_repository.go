@@ -162,3 +162,23 @@ func (r *UserRepository) GetRoleByID(ctx context.Context, userID uuid.UUID) (mod
 
 	return role, nil
 }
+
+func (r *UserRepository) Deposit(ctx context.Context, userID uuid.UUID, amount int64) error {
+	query := `
+	UPDATE users
+	SET balance = balance + $1
+	WHERE user_id = $2
+`
+
+	tag, err := r.db.Exec(ctx, query, amount, userID)
+
+	if err != nil {
+		return err
+	}
+
+	if tag.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+
+	return nil
+}

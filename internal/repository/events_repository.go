@@ -77,7 +77,9 @@ func (r *EventRepository) GetEvents(ctx context.Context) ([]*models.Event, error
 		return nil, err
 	}
 	defer rows.Close()
+
 	events := make([]*models.Event, 0)
+
 	for rows.Next() {
 		var event models.Event
 		err := rows.Scan(
