@@ -93,3 +93,13 @@ func (s *EventService) GetEvents(ctx context.Context) ([]*models.Event, error) {
 
 	return events, nil
 }
+
+func (s *EventService) GetEventByID(ctx context.Context, eventID uuid.UUID) (*models.Event, error) {
+	var event *models.Event
+
+	event, err := s.repo.GetEventByID(ctx, eventID)
+	if err != nil {
+		return nil, fmt.Errorf("get event: %w", err)
+	}
+	return event, nil
+}

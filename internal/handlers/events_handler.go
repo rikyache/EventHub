@@ -68,3 +68,31 @@ func (h *EventHandler) GetEvents(w http.ResponseWriter, r *http.Request) {
 		slog.Error("failed to encode events", "error", err)
 	}
 }
+
+func (h *EventHandler) GetEventByID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := r.PathValue("id")
+
+	eventID, err := uuid.Parse(id)
+	if err != nil {
+		http.Error(w, "invalid event ID", http.StatusBadRequest)
+		return
+	}
+
+	var event *models.Event
+
+	event, err = h.service.GetEventByID(ctx, eventID)
+	if err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	err = json.NewEncoder(w).Encode(event)
+	if err != nil {
+		slog.Error("failed to encode event", "error", err)
+		return
+	}
+}

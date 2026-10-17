@@ -26,11 +26,9 @@ func main() {
 	// logger
 	log := logger.New("event-service", slog.LevelInfo)
 	slog.SetDefault(log)
-
 	// cfg
 
 	dsn := os.Getenv("DATABASE_URL")
-
 	// db
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -52,14 +50,17 @@ func main() {
 	// repo
 	userRepo := repository.NewUsersRepository(pool)
 	eventRepo := repository.NewEventRepository(pool)
+	ticketRepo := repository.NewTicketRepository(pool)
 	// service
 	authService := service.NewAuthService(userRepo, tokenManager)
 	userService := service.NewUserService(userRepo)
 	eventService := service.NewEventService(eventRepo)
+	ticketService := service.NewTicketService(ticketRepo)
 	//	handler
 	authHandler := handlers.NewAuthHandler(authService)
 	userHandler := handlers.NewUserHandler(userService)
 	eventHandler := handlers.NewEventHandler(eventService)
+	ticketHandler := handlers.NewTicketHandler(ticketService)
 
 	// router
 	mux := http.NewServeMux()
@@ -90,13 +91,13 @@ func main() {
 		),
 	) // создание мероприятия
 	mux.HandleFunc("GET /events", eventHandler.GetEvents)
-	mux.HandleFunc("GET /events/{id}", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("GET /events/{id}", eventHandler.GetEventByID)
 	mux.HandleFunc("PATCH /events/{id}", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("POST /events/{id}/publish", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("GET /events/{id}/cancel", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("GET /events/{id}/tickets", func(w http.ResponseWriter, r *http.Request) {})
 	//TICKETS
-	mux.HandleFunc("POST /events/{id}/tickets", func(w http.ResponseWriter, r *http.Request) {})
+	mux.Handle("POST /events/{id}/tickets", middleware.Auth(tokenManager)(http.HandlerFunc(ticketHandler.BuyTicket)))
 	mux.HandleFunc("GET /tickets/{id}", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("POST /tickets/{id}/refund", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("POST /tickets/{id}/check-in", func(w http.ResponseWriter, r *http.Request) {})

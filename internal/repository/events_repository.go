@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -90,6 +91,7 @@ func (r *EventRepository) GetEvents(ctx context.Context) ([]*models.Event, error
 			&event.Price,
 			&event.StartDate,
 			&event.EndDate,
+			&event.CreatedDate,
 			&event.Status,
 		)
 		if err != nil {
@@ -103,4 +105,45 @@ func (r *EventRepository) GetEvents(ctx context.Context) ([]*models.Event, error
 	}
 
 	return events, nil
+}
+
+func (r *EventRepository) GetEventByID(ctx context.Context, eventID uuid.UUID) (*models.Event, error) {
+	query := `
+	SELECT 
+		event_id,
+		organizer_id,
+		title,
+		description,
+		type,
+		location,
+		capacity,
+		price,
+		start_date,
+		end_date,
+		create_date,
+		status
+	FROM events
+	WHERE event_id = $1`
+
+	var event models.Event
+
+	err := r.db.QueryRow(ctx, query, eventID).Scan(
+		&event.EventID,
+		&event.OrganizerID,
+		&event.Title,
+		&event.Description,
+		&event.Type,
+		&event.Location,
+		&event.Capacity,
+		&event.Price,
+		&event.StartDate,
+		&event.EndDate,
+		&event.CreatedDate,
+		&event.Status,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get event by ID: %w", err)
+	}
+
+	return &event, nil
 }
