@@ -234,3 +234,82 @@ func (r *ReservationRepository) Confirm(ctx context.Context, reservationID, user
 
 	return ticketID, nil
 }
+
+// find and set reservation status to expired
+func (r *ReservationRepository) Expire(ctx context.Context) (bool, error) {
+	query := `
+    SELECT reservation_id, event_id
+    FROM reservations
+    WHERE status = 'pending'
+      AND expires_at <= clock_timestamp()
+    ORDER BY expires_at, reservation_id
+    LIMIT 1
+    FOR UPDATE SKIP LOCKED
+`
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback(ctx)
+
+	var reservationID uuid.UUID
+	var eventID uuid.UUID
+
+	err = tx.QueryRow(ctx, query).Scan(
+		&reservationID,
+		&eventID,
+	)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+
+	if err != nil {
+		return false, fmt.Errorf("find expired reservation: %w", err)
+	}
+
+	query = `
+	UPDATE reservations
+	SET status = 'expired'
+	WHERE reservation_id = $1
+	  AND status = 'pending'
+	  AND expires_at <= clock_timestamp();
+`
+
+	tag, err := tx.Exec(ctx, query, reservationID)
+	if err != nil {
+		return false, fmt.Errorf("update reservation status: %w", err)
+	}
+
+	if tag.RowsAffected() != 1 {
+		return false, fmt.Errorf(
+			"expected to expire one reservation, affected %d rows",
+			tag.RowsAffected(),
+		)
+	}
+
+	query = `
+	UPDATE events
+	SET reserved_count = reserved_count - 1
+	WHERE event_id = $1
+	  AND reserved_count > 0;
+`
+
+	tag, err = tx.Exec(ctx, query, eventID)
+	if err != nil {
+		return false, fmt.Errorf("release reserved seat: %w", err)
+	}
+
+	if tag.RowsAffected() != 1 {
+		return false, fmt.Errorf(
+			"expected to release one seat, affected %d rows",
+			tag.RowsAffected(),
+		)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return false, fmt.Errorf("commit expiration: %w", err)
+	}
+
+	return true, nil
+}

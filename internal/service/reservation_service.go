@@ -34,3 +34,7 @@ func (s *ReservationService) Confirm(ctx context.Context, reservationID, userID 
 
 	return ticketID, nil
 }
+
+func (s *ReservationService) Expire(ctx context.Context) (bool, error) {
+	return s.repo.Expire(ctx)
+}
