@@ -5,7 +5,7 @@ CREATE TABLE reservations (
 
     price BIGINT NOT NULL CHECK (price >= 0),
 
-    status VARCHAR(20) NOT NULL check (price >= 0),
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL,
 
@@ -16,5 +16,4 @@ CREATE TABLE reservations (
                           'expired',
                           'cancelled'
         ))
-
 )

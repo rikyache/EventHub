@@ -51,16 +51,19 @@ func main() {
 	userRepo := repository.NewUsersRepository(pool)
 	eventRepo := repository.NewEventRepository(pool)
 	ticketRepo := repository.NewTicketRepository(pool)
+	reservationRepo := repository.NewReservationRepository(pool)
 	// service
 	authService := service.NewAuthService(userRepo, tokenManager)
 	userService := service.NewUserService(userRepo)
 	eventService := service.NewEventService(eventRepo)
 	ticketService := service.NewTicketService(ticketRepo)
+	reservationService := service.NewReservationService(reservationRepo)
 	//	handler
 	authHandler := handlers.NewAuthHandler(authService)
 	userHandler := handlers.NewUserHandler(userService)
 	eventHandler := handlers.NewEventHandler(eventService)
 	ticketHandler := handlers.NewTicketHandler(ticketService)
+	reservationHandler := handlers.NewReservationHandler(reservationService)
 
 	// router
 	mux := http.NewServeMux()
@@ -96,7 +99,11 @@ func main() {
 	mux.HandleFunc("POST /events/{id}/publish", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("POST /events/{id}/cancel", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("GET /events/{id}/tickets", func(w http.ResponseWriter, r *http.Request) {})
-	mux.HandleFunc("POST /events/{id}/reservation", func(w http.ResponseWriter, r *http.Request) {})
+	mux.Handle("POST /events/{id}/reservations",
+		middleware.Auth(tokenManager)(
+			http.HandlerFunc(reservationHandler.Create),
+		))
+	mux.HandleFunc("POST /reservations//confirm", func(w http.ResponseWriter, r *http.Request) {})
 	//TICKETS
 	mux.Handle("POST /events/{id}/tickets", middleware.Auth(tokenManager)(http.HandlerFunc(ticketHandler.BuyTicket)))
 	mux.HandleFunc("GET /tickets/{id}", func(w http.ResponseWriter, r *http.Request) {})
