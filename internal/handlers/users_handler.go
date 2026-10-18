@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"EventHub/internal/DTO"
+	"EventHub/internal/dto"
 	"EventHub/internal/middleware"
 	"EventHub/internal/models"
 	"EventHub/internal/service"
