@@ -24,3 +24,13 @@ func (s *ReservationService) Create(ctx context.Context, eventID uuid.UUID, user
 
 	return reservationID, err
 }
+
+func (s *ReservationService) Confirm(ctx context.Context, reservationID, userID uuid.UUID) (uuid.UUID, error) {
+	ticketID, err := s.repo.Confirm(ctx, reservationID, userID)
+
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return ticketID, nil
+}

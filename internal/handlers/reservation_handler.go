@@ -59,3 +59,50 @@ func (h *ReservationHandler) Create(w http.ResponseWriter, r *http.Request) {
 		slog.Error("failed to encode reservation response", "error", err)
 	}
 }
+
+func (h *ReservationHandler) Confirm(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	userID, ok := middleware.UserIDFromContext(ctx)
+	if !ok {
+		http.Error(w, "Missing UserID", http.StatusUnauthorized)
+		return
+	}
+
+	reservationID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Invalid Reservation ID", http.StatusBadRequest)
+		return
+	}
+
+	ticketID, err := h.service.Confirm(ctx, reservationID, userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, repository.ErrReservationNotFound):
+			http.Error(w, "Reservation not found", http.StatusNotFound)
+
+		case errors.Is(err, repository.ErrReservationExpired):
+			http.Error(w, "Reservation expired", http.StatusConflict)
+
+		case errors.Is(err, repository.ErrReservationNotPending):
+			http.Error(w, "Reservation is not pending", http.StatusConflict)
+
+		case errors.Is(err, repository.ErrInsufficientFunds):
+			http.Error(w, "Insufficient funds", http.StatusConflict)
+
+		default:
+			slog.Error("failed to confirm reservation", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	if err := json.NewEncoder(w).Encode(map[string]uuid.UUID{
+		"ticket_id": ticketID,
+	}); err != nil {
+		slog.Error("failed to encode confirmation response", "error", err)
+	}
+}

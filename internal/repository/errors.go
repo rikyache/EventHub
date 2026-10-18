@@ -9,4 +9,7 @@ var (
 	ErrTicketUnavailable      = errors.New("ticket unavailable")
 	ErrInsufficientFunds      = errors.New("insufficient funds")
 	ErrReservationUnavailable = errors.New("reservation unavailable")
+	ErrReservationNotFound    = errors.New("reservation not found")
+	ErrReservationNotPending  = errors.New("reservation not pending")
+	ErrReservationExpired     = errors.New("reservation is expired")
 )
