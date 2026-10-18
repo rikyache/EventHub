@@ -18,10 +18,10 @@ const (
 
 type Reservation struct {
 	ReservationID uuid.UUID         `json:"reservationID"`
-	eventID       uuid.UUID         `json:"eventID"`
-	userID        uuid.UUID         `json:"userID"`
-	price         int64             `json:"price"`
-	status        ReservationStatus `json:"status"`
-	createdAt     time.Time         `json:"createdAt"`
+	EventID       uuid.UUID         `json:"eventID"`
+	UserID        uuid.UUID         `json:"userID"`
+	Price         int64             `json:"price"`
+	Status        ReservationStatus `json:"status"`
+	CreatedAt     time.Time         `json:"createdAt"`
 	ExpiresAt     time.Time         `json:"expiresAt"`
 }

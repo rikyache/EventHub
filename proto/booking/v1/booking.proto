@@ -1,0 +1,45 @@
+
+syntax = "proto3";
+
+package booking.v1;
+
+option go_package = "EventHub/gen/booking/v1;bookingv1";
+
+//говорим создать крч вот такой сервис с такими методами - они будут представлены интерфейсом
+// поэтому нужно будет реализовать каждый из таких методов отдельно
+// эти методы должны быть реализованы для нашего сервера.
+service BookingService {
+  rpc CreateReservation(CreateReservationRequest)
+      returns (CreateReservationResponse);
+
+  rpc ConfirmReservation(ConfirmReservationRequest)
+      returns (ConfirmReservationResponse);
+
+  rpc CancelReservation(CancelReservationRequest)
+      returns (CancelReservationResponse);
+}
+
+message CreateReservationRequest {
+  string event_id = 1;
+  string user_id = 2;
+}
+
+message CreateReservationResponse {
+  string reservation_id = 1;
+}
+
+message ConfirmReservationRequest {
+  string reservation_id = 1;
+  string user_id = 2;
+}
+
+message ConfirmReservationResponse {
+  string ticket_id = 1;
+}
+
+message CancelReservationRequest {
+  string reservation_id = 1;
+  string user_id = 2;
+}
+
+message CancelReservationResponse {}

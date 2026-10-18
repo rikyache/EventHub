@@ -1,6 +1,14 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"os"
+	"time"
+
+	pb "EventHub/gen/booking/v1"
 	"EventHub/internal/auth"
 	"EventHub/internal/database"
 	"EventHub/internal/handlers"
@@ -9,19 +17,10 @@ import (
 	"EventHub/internal/models"
 	"EventHub/internal/repository"
 	"EventHub/internal/service"
-	"EventHub/internal/worker"
-	"context"
-	"fmt"
-	"log/slog"
-	"net/http"
-	"os"
-	"time"
-)
 
-// TODO:
-// TODO: реализовать три сервиса event service/postgresql
-// TODO: реализовать booking service/postgresql, redis, kafka -> noti worker
-// TODO: payment service -> postgresql
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+)
 
 func main() {
 	// Logger
@@ -31,68 +30,75 @@ func main() {
 	// Config
 	dsn := os.Getenv("DATABASE_URL")
 
-	// Create context related to application life cycle
+	// PostgreSQL
 	dbCtx, dbCancel := context.WithTimeout(
 		context.Background(),
 		5*time.Second,
 	)
 
-	// Open database for connections
 	pool, err := database.NewPostgresPool(dbCtx, dsn)
 	dbCancel()
 
 	if err != nil {
 		slog.Error("failed to connect to postgres", "error", err)
-		os.Exit(1)
+		return
 	}
 	defer pool.Close()
 
-	// Initiate token manager for JWT logic
+	// JWT
 	tokenManager, err := auth.NewTokenManager(os.Getenv("JWT_SECRET"))
 	if err != nil {
 		slog.Error("failed to initialize JWT token manager", "error", err)
-		os.Exit(1)
+		return
 	}
 
-	// Repository init
+	// Repositories
 	userRepo := repository.NewUsersRepository(pool)
 	eventRepo := repository.NewEventRepository(pool)
 	ticketRepo := repository.NewTicketRepository(pool)
-	reservationRepo := repository.NewReservationRepository(pool)
 
-	// Service init
+	// Services
 	authService := service.NewAuthService(userRepo, tokenManager)
 	userService := service.NewUserService(userRepo)
 	eventService := service.NewEventService(eventRepo)
 	ticketService := service.NewTicketService(ticketRepo)
-	reservationService := service.NewReservationService(reservationRepo)
 
-	//	Handlers init
+	// gRPC client
+	conn, err := grpc.NewClient(
+		"booking:50051",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		slog.Error("failed to create grpc client", "error", err)
+		return
+	}
+	defer conn.Close()
+
+	bookingClient := pb.NewBookingServiceClient(conn)
+
+	// HTTP handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	userHandler := handlers.NewUserHandler(userService)
 	eventHandler := handlers.NewEventHandler(eventService)
 	ticketHandler := handlers.NewTicketHandler(ticketService)
-	reservationHandler := handlers.NewReservationHandler(reservationService)
-
-	// Background worker
-	workerCtx, workerCancel := context.WithCancel(
-		context.Background(),
-	)
-	defer workerCancel()
-
-	expirationWorker := worker.NewReservationExpirationWorker(reservationService, 5*time.Second)
-	go expirationWorker.Run(workerCtx)
+	reservationHandler := handlers.NewReservationHandler(bookingClient)
 
 	// Router
 	mux := http.NewServeMux()
 
-	// Routes
+	// Health
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Healthy")
 	})
 
 	// Users
-	mux.Handle("GET /users/me", middleware.Auth(tokenManager)(http.HandlerFunc(userHandler.Profile)))
+	mux.Handle(
+		"GET /users/me",
+		middleware.Auth(tokenManager)(
+			http.HandlerFunc(userHandler.Profile),
+		),
+	)
+
 	mux.HandleFunc("GET /users/tickets", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("POST /users/deposit", func(w http.ResponseWriter, r *http.Request) {})
 
@@ -115,6 +121,7 @@ func main() {
 			),
 		),
 	)
+
 	mux.HandleFunc("GET /events", eventHandler.GetEvents)
 	mux.HandleFunc("GET /events/{id}", eventHandler.GetEventByID)
 	mux.HandleFunc("PATCH /events/{id}", func(w http.ResponseWriter, r *http.Request) {})
@@ -122,26 +129,43 @@ func main() {
 	mux.HandleFunc("POST /events/{id}/cancel", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("GET /events/{id}/tickets", func(w http.ResponseWriter, r *http.Request) {})
 
-	// Reservations
-	mux.Handle("POST /events/{id}/reservations",
+	// Reservations — через gRPC
+	mux.Handle(
+		"POST /events/{id}/reservations",
 		middleware.Auth(tokenManager)(
 			http.HandlerFunc(reservationHandler.Create),
-		))
-	mux.Handle("POST /reservations/{id}/confirm", middleware.Auth(tokenManager)(
-		http.HandlerFunc(reservationHandler.Confirm),
-	))
-	mux.Handle("POST /reservations/{id}/cancel", middleware.Auth(tokenManager)(http.HandlerFunc(reservationHandler.Cancel)))
+		),
+	)
+
+	mux.Handle(
+		"POST /reservations/{id}/confirm",
+		middleware.Auth(tokenManager)(
+			http.HandlerFunc(reservationHandler.Confirm),
+		),
+	)
+
+	mux.Handle(
+		"POST /reservations/{id}/cancel",
+		middleware.Auth(tokenManager)(
+			http.HandlerFunc(reservationHandler.Cancel),
+		),
+	)
 
 	// Tickets
-	mux.Handle("POST /events/{id}/tickets", middleware.Auth(tokenManager)(http.HandlerFunc(ticketHandler.BuyTicket)))
+	mux.Handle(
+		"POST /events/{id}/tickets",
+		middleware.Auth(tokenManager)(
+			http.HandlerFunc(ticketHandler.BuyTicket),
+		),
+	)
+
 	mux.HandleFunc("GET /tickets/{id}", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("POST /tickets/{id}/refund", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("POST /tickets/{id}/check-in", func(w http.ResponseWriter, r *http.Request) {})
 
 	// HTTP server
-	slog.Info("server started", "port", 8080)
+	slog.Info("HTTP server started", "port", 8080)
 	if err := http.ListenAndServe(":8080", mux); err != nil {
 		slog.Error("HTTP server stopped", "error", err)
-		os.Exit(1)
 	}
 }

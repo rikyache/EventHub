@@ -1,6 +1,9 @@
+
 services:
   app:
-    build: .
+    build:
+      context: .
+      target: api
     ports:
       - "8080:8080"
     env_file:
@@ -12,6 +15,21 @@ services:
         condition: service_started
       migrate:
         condition: service_completed_successfully
+      booking:
+        condition: service_started
+
+  booking:
+    build:
+      context: .
+      target: booking
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
   postgres:
     image: postgres:17-alpine
     environment:
@@ -19,7 +37,7 @@ services:
       POSTGRES_PASSWORD: postgres_password
       POSTGRES_DB: postgres_db
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -27,12 +45,13 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-
     ports:
       - "6379:6379"
+
   migrate:
     image: migrate/migrate:v4.19.0
     volumes:

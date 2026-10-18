@@ -31,7 +31,7 @@ CREATE TABLE events(
         CHECK (status IN (
             'draft',
             'published',
-            'cancelled',
+            'canceled',
             'completed'
         )),
 

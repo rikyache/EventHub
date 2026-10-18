@@ -1,31 +1,35 @@
 package handlers
 
 import (
+	pb "EventHub/gen/booking/v1"
 	"EventHub/internal/middleware"
-	"EventHub/internal/repository"
-	"EventHub/internal/service"
+	"context"
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
+//через HTTP API мы вызываем функции на удаленном сервере
+
 type ReservationHandler struct {
-	service *service.ReservationService
+	bookingClient pb.BookingServiceClient
 }
 
-func NewReservationHandler(service *service.ReservationService) *ReservationHandler {
+func NewReservationHandler(bookingClient pb.BookingServiceClient) *ReservationHandler {
 	return &ReservationHandler{
-		service: service,
+		bookingClient: bookingClient,
 	}
 }
 
 func (h *ReservationHandler) Create(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, ok := middleware.UserIDFromContext(ctx)
+	userID, ok := middleware.UserIDFromContext(r.Context())
 	if !ok {
 		http.Error(w, "Missing UserID", http.StatusUnauthorized)
 		return
@@ -37,33 +41,31 @@ func (h *ReservationHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reservationID, err := h.service.Create(ctx, eventID, userID)
-	if err != nil {
-		switch {
-		case errors.Is(err, repository.ErrReservationUnavailable):
-			http.Error(w, "reservation unavailable", http.StatusConflict)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
 
-		default:
-			slog.Error("failed to create reservation", "error", err)
-			http.Error(w, "internal server error", http.StatusInternalServerError)
-		}
+	resp, err := h.bookingClient.CreateReservation(ctx, &pb.CreateReservationRequest{
+		EventId: eventID.String(),
+		UserId:  userID.String(),
+	},
+	)
+	if err != nil {
+		handleBookingError(w, err)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
-	if err := json.NewEncoder(w).Encode(map[string]uuid.UUID{
-		"reservation_id": reservationID,
+	if err := json.NewEncoder(w).Encode(map[string]string{
+		"reservation_id": resp.GetReservationId(),
 	}); err != nil {
 		slog.Error("failed to encode reservation response", "error", err)
 	}
 }
 
 func (h *ReservationHandler) Confirm(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	userID, ok := middleware.UserIDFromContext(ctx)
+	userID, ok := middleware.UserIDFromContext(r.Context())
 	if !ok {
 		http.Error(w, "Missing UserID", http.StatusUnauthorized)
 		return
@@ -75,35 +77,19 @@ func (h *ReservationHandler) Confirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ticketID, err := h.service.Confirm(ctx, reservationID, userID)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	resp, err := h.bookingClient.ConfirmReservation(ctx, &pb.ConfirmReservationRequest{
+		ReservationId: reservationID.String(),
+		UserId:        userID.String(),
+	})
 	if err != nil {
-		switch {
-		case errors.Is(err, repository.ErrReservationNotFound):
-			http.Error(w, "Reservation not found", http.StatusNotFound)
-
-		case errors.Is(err, repository.ErrReservationExpired):
-			http.Error(w, "Reservation expired", http.StatusConflict)
-
-		case errors.Is(err, repository.ErrReservationNotPending):
-			http.Error(w, "Reservation is not pending", http.StatusConflict)
-
-		case errors.Is(err, repository.ErrInsufficientFunds):
-			http.Error(w, "Insufficient funds", http.StatusConflict)
-
-		default:
-			slog.Error("failed to confirm reservation", "error", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-		}
+		handleBookingError(w, err)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	if err := json.NewEncoder(w).Encode(map[string]uuid.UUID{
-		"ticket_id": ticketID,
-	}); err != nil {
-		slog.Error("failed to encode confirmation response", "error", err)
+	if err := json.NewEncoder(w).Encode(map[string]string{"ticket_id": resp.GetTicketId()}); err != nil {
+		slog.Error("failed to encode reservation response", "error", err)
 	}
 }
 
@@ -122,27 +108,47 @@ func (h *ReservationHandler) Cancel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.service.Cancel(ctx, userID, reservationID)
+	_, err = h.bookingClient.CancelReservation(
+		ctx,
+		&pb.CancelReservationRequest{
+			ReservationId: reservationID.String(),
+			UserId:        userID.String(),
+		},
+	)
 	if err != nil {
-		switch {
-		case errors.Is(err, repository.ErrReservationNotFound):
-			http.Error(w, "Reservation not found", http.StatusNotFound)
-
-		case errors.Is(err, repository.ErrReservationNotPending):
-			http.Error(w, "Reservation is not pending", http.StatusConflict)
-
-		case errors.Is(err, repository.ErrReservationUnavailable):
-			http.Error(w, "Reservation unavailable", http.StatusConflict)
-
-		default:
-			slog.Error("failed to cancel reservation",
-				"reservation_id", reservationID,
-				"error", err,
-			)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-		}
+		handleBookingError(w, err)
 		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+
+}
+
+func handleBookingError(w http.ResponseWriter, err error) {
+	switch status.Code(err) {
+	case codes.InvalidArgument:
+		http.Error(w, "Invalid argument", http.StatusBadRequest)
+
+	case codes.NotFound:
+		http.Error(w, "Reservation not found", http.StatusNotFound)
+
+	case codes.FailedPrecondition:
+		http.Error(w, "Reservation unavailable", http.StatusConflict)
+
+	case codes.Unavailable:
+		slog.Error("booking service unavailable", "error", err)
+		http.Error(w, "Booking service unavailable", http.StatusServiceUnavailable)
+
+	case codes.DeadlineExceeded:
+		slog.Error("booking service timeout", "error", err)
+		http.Error(w, "Booking service timeout", http.StatusGatewayTimeout)
+
+	case codes.Canceled:
+		slog.Warn("booking request canceled", "error", err)
+		http.Error(w, "Request canceled", http.StatusRequestTimeout)
+
+	default:
+		slog.Error("booking grpc request failed", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
 }

@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS tickets
         FOREIGN KEY (event_id)
             REFERENCES events (event_id),
 
-    CONSTRAINT tickets_event_fk
+    CONSTRAINT tickets_user_fk
         FOREIGN KEY (user_id)
             REFERENCES users (user_id),
 

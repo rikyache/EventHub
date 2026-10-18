@@ -1,6 +1,6 @@
 -- 1. Создаём events
 
-CREATE TABLE events (
+CREATE TABLE IF NOT EXISTS events (
                         event_id UUID PRIMARY KEY,
                         organizer_id UUID NOT NULL REFERENCES users(user_id),
 
@@ -33,13 +33,13 @@ CREATE TABLE events (
                             CHECK (end_date > start_date)
 );
 
-CREATE INDEX idx_events_organizer_id
+CREATE INDEX IF NOT EXISTS idx_events_organizer_id
     ON events(organizer_id);
 
 
 -- 2. Создаём tickets
 
-CREATE TABLE tickets (
+CREATE TABLE IF NOT EXISTS tickets (
                          ticket_id UUID PRIMARY KEY,
                          event_id UUID NOT NULL,
                          user_id UUID NOT NULL,
@@ -66,5 +66,5 @@ CREATE TABLE tickets (
                                  ))
 );
 
-CREATE INDEX idx_tickets_user_id ON tickets(user_id);
-CREATE INDEX idx_tickets_event_id ON tickets(event_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_user_id ON tickets(user_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_event_id ON tickets(event_id);
