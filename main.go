@@ -96,6 +96,7 @@ func main() {
 	mux.HandleFunc("POST /events/{id}/publish", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("POST /events/{id}/cancel", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("GET /events/{id}/tickets", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("POST /events/{id}/reservation", func(w http.ResponseWriter, r *http.Request) {})
 	//TICKETS
 	mux.Handle("POST /events/{id}/tickets", middleware.Auth(tokenManager)(http.HandlerFunc(ticketHandler.BuyTicket)))
 	mux.HandleFunc("GET /tickets/{id}", func(w http.ResponseWriter, r *http.Request) {})
