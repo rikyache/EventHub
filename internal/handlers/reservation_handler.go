@@ -106,3 +106,43 @@ func (h *ReservationHandler) Confirm(w http.ResponseWriter, r *http.Request) {
 		slog.Error("failed to encode confirmation response", "error", err)
 	}
 }
+
+func (h *ReservationHandler) Cancel(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	userID, ok := middleware.UserIDFromContext(ctx)
+	if !ok {
+		http.Error(w, "Missing UserID", http.StatusUnauthorized)
+		return
+	}
+
+	reservationID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Invalid Reservation ID", http.StatusBadRequest)
+		return
+	}
+
+	err = h.service.Cancel(ctx, userID, reservationID)
+	if err != nil {
+		switch {
+		case errors.Is(err, repository.ErrReservationNotFound):
+			http.Error(w, "Reservation not found", http.StatusNotFound)
+
+		case errors.Is(err, repository.ErrReservationNotPending):
+			http.Error(w, "Reservation is not pending", http.StatusConflict)
+
+		case errors.Is(err, repository.ErrReservationUnavailable):
+			http.Error(w, "Reservation unavailable", http.StatusConflict)
+
+		default:
+			slog.Error("failed to cancel reservation",
+				"reservation_id", reservationID,
+				"error", err,
+			)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}

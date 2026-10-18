@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"EventHub/internal/models"
 	"context"
 	"errors"
 	"fmt"
@@ -312,4 +313,69 @@ func (r *ReservationRepository) Expire(ctx context.Context) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func (r *ReservationRepository) Cancel(ctx context.Context, userID, reservationID uuid.UUID) error {
+	query := `
+	SELECT event_id, status
+	FROM reservations
+	WHERE reservation_id = $1
+	  AND user_id = $2
+	FOR UPDATE;
+	`
+
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	var eventID uuid.UUID
+	var status models.ReservationStatus
+
+	err = tx.QueryRow(ctx, query, reservationID, userID).Scan(&eventID, &status)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrReservationNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("get reservation: %w", err)
+	}
+
+	if status != models.ReservationStatusPending {
+		return ErrReservationNotPending
+	}
+
+	query = `
+	UPDATE reservations
+	SET status = 'cancelled'
+	WHERE reservation_id = $1
+	  AND status = 'pending';
+`
+	tag, err := tx.Exec(ctx, query, reservationID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return ErrReservationUnavailable
+	}
+
+	query = `
+	UPDATE events
+	SET reserved_count = reserved_count - 1
+	WHERE event_id = $1
+	  AND reserved_count > 0;
+`
+	tag, err = tx.Exec(ctx, query, eventID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return ErrReservationUnavailable
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("commit cancel reservation: %w", err)
+	}
+	return nil
 }

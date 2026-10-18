@@ -38,3 +38,11 @@ func (s *ReservationService) Confirm(ctx context.Context, reservationID, userID 
 func (s *ReservationService) Expire(ctx context.Context) (bool, error) {
 	return s.repo.Expire(ctx)
 }
+
+func (s *ReservationService) Cancel(ctx context.Context, userID, reservationID uuid.UUID) error {
+	err := s.repo.Cancel(ctx, userID, reservationID)
+	if err != nil {
+		return err
+	}
+	return nil
+}

@@ -83,26 +83,26 @@ func main() {
 	expirationWorker := worker.NewReservationExpirationWorker(reservationService, 5*time.Second)
 	go expirationWorker.Run(workerCtx)
 
-	// router
+	// Router
 	mux := http.NewServeMux()
 
-	// routes
+	// Routes
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Healthy")
 	})
 
-	// USERS
+	// Users
 	mux.Handle("GET /users/me", middleware.Auth(tokenManager)(http.HandlerFunc(userHandler.Profile)))
 	mux.HandleFunc("GET /users/tickets", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("POST /users/deposit", func(w http.ResponseWriter, r *http.Request) {})
 
-	// AUTH
+	// Auth
 	mux.HandleFunc("POST /auth/register", authHandler.Register)
 	mux.HandleFunc("POST /auth/login", authHandler.Login)
 	mux.HandleFunc("POST /auth/logout", authHandler.Logout)
 	mux.HandleFunc("POST /auth/refresh", func(w http.ResponseWriter, r *http.Request) {})
 
-	// EVENTS
+	// Events
 	mux.Handle(
 		"POST /events",
 		middleware.Auth(tokenManager)(
@@ -121,19 +121,24 @@ func main() {
 	mux.HandleFunc("POST /events/{id}/publish", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("POST /events/{id}/cancel", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("GET /events/{id}/tickets", func(w http.ResponseWriter, r *http.Request) {})
+
+	// Reservations
 	mux.Handle("POST /events/{id}/reservations",
 		middleware.Auth(tokenManager)(
 			http.HandlerFunc(reservationHandler.Create),
 		))
-	mux.HandleFunc("POST /reservations/{id}/confirm", reservationHandler.Confirm)
+	mux.Handle("POST /reservations/{id}/confirm", middleware.Auth(tokenManager)(
+		http.HandlerFunc(reservationHandler.Confirm),
+	))
+	mux.Handle("POST /reservations/{id}/cancel", middleware.Auth(tokenManager)(http.HandlerFunc(reservationHandler.Cancel)))
 
-	//TICKETS
+	// Tickets
 	mux.Handle("POST /events/{id}/tickets", middleware.Auth(tokenManager)(http.HandlerFunc(ticketHandler.BuyTicket)))
 	mux.HandleFunc("GET /tickets/{id}", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("POST /tickets/{id}/refund", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("POST /tickets/{id}/check-in", func(w http.ResponseWriter, r *http.Request) {})
 
-	//http server
+	// HTTP server
 	slog.Info("server started", "port", 8080)
 	if err := http.ListenAndServe(":8080", mux); err != nil {
 		slog.Error("HTTP server stopped", "error", err)

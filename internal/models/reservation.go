@@ -9,7 +9,7 @@ import (
 type ReservationStatus string
 
 const (
-	ReservationStatusPending   ReservationStatus = "confirmed"
+	ReservationStatusPending   ReservationStatus = "pending"
 	ReservationStatusConfirmed ReservationStatus = "confirmed"
 	ReservationStatusExpired   ReservationStatus = "expired"
 	ReservationStatusCancelled ReservationStatus = "cancelled"
