@@ -7,4 +7,5 @@ var (
 	ErrUsernameTaken     = errors.New("username already taken")
 	ErrUserNotFound      = errors.New("user not found")
 	ErrTicketUnavailable = errors.New("ticket unavailable")
+	ErrInsufficientFunds = errors.New("insufficient funds")
 )

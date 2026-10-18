@@ -49,6 +49,44 @@ func (r *TicketRepository) BuyTicket(ctx context.Context, eventID uuid.UUID, use
 		return uuid.Nil, fmt.Errorf("could not buy ticket: %w", err)
 	}
 
+	var balance int64
+
+	query = `
+		SELECT balance
+		FROM users
+		WHERE user_id = $1
+		FOR UPDATE
+	`
+
+	err = tx.QueryRow(ctx, query, userID).Scan(&balance)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, ErrUserNotFound
+	}
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("could not buy ticket: %w", err)
+	}
+
+	if balance < price {
+		return uuid.Nil, ErrInsufficientFunds
+	}
+
+	query = `
+		UPDATE users
+		SET balance = balance - $1
+		WHERE user_id = $2
+		AND balance >= $1
+	`
+
+	tag, err := tx.Exec(ctx, query, price, userID)
+
+	if tag.RowsAffected() == 0 {
+		return uuid.Nil, ErrTicketUnavailable
+	}
+
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("could not deduct balance: %w", err)
+	}
+
 	ticketID := uuid.New()
 
 	query = `
@@ -61,7 +99,7 @@ func (r *TicketRepository) BuyTicket(ctx context.Context, eventID uuid.UUID, use
         valid_until
     )
     VALUES ($1, $2, $3, $4, 'active', $5)
-`
+	`
 
 	_, err = tx.Exec(ctx, query,
 		ticketID,

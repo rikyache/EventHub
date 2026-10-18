@@ -19,6 +19,10 @@ func NewTicketService(repo *repository.TicketRepository) *TicketService {
 }
 
 func (r *TicketService) CreateTicket(ctx context.Context, eventID, userID uuid.UUID) (uuid.UUID, error) {
+
+	// var balance int64
+	// var price int64
+
 	ticketID, err := r.repo.BuyTicket(ctx, eventID, userID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("buy ticket: %w", err)
